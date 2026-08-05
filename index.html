@@ -7,166 +7,300 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="header-inner">
-      <h1>Amazon PPC Duplicator Tool</h1>
-      <div id="file-status" class="file-status">No bulk file loaded</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="app-logo">PPC<span>Tools</span></div>
+      </div>
+
+      <div class="sidebar-search">
+        <input type="text" id="global-search" class="search-input" placeholder="Search campaigns, ASINs, targets..." autocomplete="off" />
+      </div>
+
+      <nav class="side-nav">
+        <div class="nav-section-label">Performance</div>
+        <button class="nav-btn" data-tab="campaigns">Campaigns</button>
+        <button class="nav-btn" data-tab="matchtype">Match Type</button>
+        <button class="nav-btn" data-tab="placements">Bid Placements</button>
+        <button class="nav-btn" data-tab="asin">ASIN</button>
+        <button class="nav-btn" data-tab="targets">Keywords &amp; Targets</button>
+        <div class="nav-section-label">Duplicate Tools</div>
+        <button class="nav-btn" data-tab="duplicator">Duplicator</button>
+        <button class="nav-btn" data-tab="checker">Duplicates Checker</button>
+      </nav>
+
+      <div class="sidebar-footer small-muted">Everything is parsed locally in your browser.</div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-title" id="active-tab-title">Campaigns</div>
+        <div class="file-menu-wrap">
+          <button id="file-menu-btn" class="btn btn-file">
+            <span id="file-menu-dot" class="status-dot"></span>
+            <span id="file-menu-label">Upload File</span>
+          </button>
+          <div id="file-dropdown" class="file-dropdown hidden">
+            <div id="file-drop-zone" class="drop-zone drop-zone-compact">
+              <input type="file" id="file-input" accept=".xlsx,.xls" hidden />
+              <div class="drop-zone-content">
+                <div class="drop-icon">📂</div>
+                <div><strong>Click to choose a file</strong> or drag &amp; drop</div>
+                <div class="drop-sub">.xlsx bulk export</div>
+              </div>
+            </div>
+            <div id="upload-error" class="error-box hidden"></div>
+            <div id="file-info" class="file-info hidden">
+              <div id="file-info-name" class="file-info-name"></div>
+              <div id="file-info-meta" class="small-muted"></div>
+            </div>
+            <div class="file-dropdown-actions">
+              <button id="export-current-btn" class="btn btn-secondary hidden">Export Current View (CSV)</button>
+              <button id="clear-file-btn" class="btn btn-tertiary hidden">Clear File</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- SEARCH RESULTS -->
+        <section id="tab-search" class="tab-panel">
+          <div class="panel">
+            <h2>Search Results</h2>
+            <p class="hint">Matches for “<span id="search-term-label"></span>” across campaigns, ASINs, and keywords / product targets.</p>
+            <h3>Campaigns (<span id="search-count-campaigns">0</span>)</h3>
+            <div id="search-campaigns-table" class="table-wrap"></div>
+            <h3>ASINs (<span id="search-count-asins">0</span>)</h3>
+            <div id="search-asins-table" class="table-wrap"></div>
+            <h3>Keywords &amp; Product Targets (<span id="search-count-targets">0</span>)</h3>
+            <div id="search-targets-table" class="table-wrap"></div>
+          </div>
+        </section>
+
+        <!-- CAMPAIGNS -->
+        <section id="tab-campaigns" class="tab-panel active">
+          <div class="panel">
+            <h2>Campaigns</h2>
+            <p class="hint">Campaign-level performance across Sponsored Products, Sponsored Brands, and Sponsored Display.</p>
+            <div id="campaigns-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+            <div id="campaigns-content" class="hidden">
+              <div class="controls-bar">
+                <input type="text" id="camp-search" class="text-input" placeholder="Search campaign name..." />
+                <select id="camp-product-filter" class="select-input">
+                  <option value="all">All ad types</option>
+                  <option value="Sponsored Products">Sponsored Products</option>
+                  <option value="Sponsored Brands">Sponsored Brands</option>
+                  <option value="Sponsored Display">Sponsored Display</option>
+                </select>
+                <select id="camp-state-filter" class="select-input">
+                  <option value="all">All states</option>
+                  <option value="enabled">Enabled</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+              <div class="summary-row">
+                <div class="summary-card"><div class="summary-label">Campaigns</div><div id="camp-stat-count" class="summary-value">0</div></div>
+                <div class="summary-card"><div class="summary-label">Spend</div><div id="camp-stat-spend" class="summary-value">0</div></div>
+                <div class="summary-card"><div class="summary-label">Sales</div><div id="camp-stat-sales" class="summary-value">0</div></div>
+                <div class="summary-card"><div class="summary-label">ACOS</div><div id="camp-stat-acos" class="summary-value">0</div></div>
+              </div>
+              <div id="campaigns-table" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MATCH TYPE -->
+        <section id="tab-matchtype" class="tab-panel">
+          <div class="panel">
+            <h2>Match Type Performance</h2>
+            <p class="hint">Performance rolled up by targeting type. Product Targeting rows (used in Auto campaigns and product-targeted ad groups) don't carry a match type, so they're grouped as <strong>Auto</strong>. Click a row to break it down by ad type.</p>
+            <div id="matchtype-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+            <div id="matchtype-content" class="hidden">
+              <div id="matchtype-table" class="table-wrap"></div>
+              <h3>By Match Type &times; Ad Type</h3>
+              <div id="matchtype-breakdown" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- BID PLACEMENTS -->
+        <section id="tab-placements" class="tab-panel">
+          <div class="panel">
+            <h2>Bid Placements</h2>
+            <p class="hint">Performance by placement modifier (Top of Search, Rest of Search, Product Pages for Sponsored Products; Home / Detail Page / Other for Sponsored Brands).</p>
+            <div id="placements-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+            <div id="placements-content" class="hidden">
+              <div class="controls-bar">
+                <select id="place-product-filter" class="select-input">
+                  <option value="all">All ad types</option>
+                  <option value="Sponsored Products">Sponsored Products</option>
+                  <option value="Sponsored Brands">Sponsored Brands</option>
+                  <option value="Sponsored Display">Sponsored Display</option>
+                </select>
+              </div>
+              <div id="placements-table" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ASIN -->
+        <section id="tab-asin" class="tab-panel">
+          <div class="panel">
+            <h2>ASIN Performance</h2>
+            <p class="hint">Performance by advertised ASIN, aggregated from Product Ad rows. Sponsored Brands reports at campaign level only and isn't broken out here.</p>
+            <div id="asin-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+            <div id="asin-content" class="hidden">
+              <div class="controls-bar">
+                <input type="text" id="asin-search" class="text-input" placeholder="Search ASIN or SKU..." />
+                <select id="asin-state-filter" class="select-input">
+                  <option value="all">All states</option>
+                  <option value="enabled">Enabled</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+              <div id="asin-table" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- KEYWORDS & TARGETS -->
+        <section id="tab-targets" class="tab-panel">
+          <div class="panel">
+            <h2>Keywords &amp; Product Target Performance</h2>
+            <p class="hint">Every Keyword and Product Targeting row, individually, with the ASIN(s) advertised by its ad group.</p>
+            <div id="targets-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+            <div id="targets-content" class="hidden">
+              <div class="controls-bar">
+                <input type="text" id="tgt-search" class="text-input" placeholder="Search target text..." />
+                <select id="tgt-product-filter" class="select-input">
+                  <option value="all">All ad types</option>
+                  <option value="Sponsored Products">Sponsored Products</option>
+                  <option value="Sponsored Brands">Sponsored Brands</option>
+                  <option value="Sponsored Display">Sponsored Display</option>
+                </select>
+                <select id="tgt-entity-filter" class="select-input">
+                  <option value="all">Keywords + Product Targets</option>
+                  <option value="keyword">Keywords only</option>
+                  <option value="productTargeting">Product Targets only</option>
+                </select>
+                <select id="tgt-matchtype-filter" class="select-input">
+                  <option value="all">All match types</option>
+                  <option value="Exact">Exact</option>
+                  <option value="Phrase">Phrase</option>
+                  <option value="Broad">Broad</option>
+                </select>
+                <select id="tgt-state-filter" class="select-input">
+                  <option value="all">All states</option>
+                  <option value="enabled">Enabled</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+              <div id="targets-table" class="table-wrap"></div>
+              <div id="targets-pager" class="pager"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DUPLICATOR -->
+        <section id="tab-duplicator" class="tab-panel">
+          <div class="panel">
+            <h2>Duplicator</h2>
+            <p class="hint">Finds Keywords and Product Targets that share the same normalized text, match type, <strong>and advertised ASIN</strong> across more than one ad group. The same keyword targeting two different products is expected and not flagged — only real overlap on the same product is.</p>
+            <div id="duplicator-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+
+            <div id="duplicator-content" class="hidden">
+              <div class="controls-bar">
+                <input type="text" id="dup-search" placeholder="Search target text or ASIN..." class="text-input" />
+                <select id="dup-product-filter" class="select-input">
+                  <option value="all">All ad types</option>
+                  <option value="Sponsored Products">Sponsored Products</option>
+                  <option value="Sponsored Brands">Sponsored Brands</option>
+                  <option value="Sponsored Display">Sponsored Display</option>
+                </select>
+                <select id="dup-matchtype-filter" class="select-input">
+                  <option value="all">All match types</option>
+                  <option value="Exact">Exact</option>
+                  <option value="Phrase">Phrase</option>
+                  <option value="Broad">Broad</option>
+                  <option value="pt">Product Targeting</option>
+                </select>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="dup-include-auto" />
+                  Include Auto-targeting default clauses (close-match / loose-match / substitutes / complements)
+                </label>
+              </div>
+
+              <div class="summary-row">
+                <div class="summary-card">
+                  <div class="summary-label">Duplicate groups</div>
+                  <div id="dup-stat-groups" class="summary-value">0</div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-label">Duplicate instances</div>
+                  <div id="dup-stat-instances" class="summary-value">0</div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-label">Spend across duplicates</div>
+                  <div id="dup-stat-spend" class="summary-value">0</div>
+                </div>
+                <div class="summary-card warn">
+                  <div class="summary-label">Wasted spend (non-top, 0 orders)</div>
+                  <div id="dup-stat-waste" class="summary-value">0</div>
+                </div>
+              </div>
+              <div id="dup-unknown-asin-note" class="small-muted hidden"></div>
+
+              <div id="dup-groups-table" class="table-wrap"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DUPLICATE CHECKER -->
+        <section id="tab-checker" class="tab-panel">
+          <div class="panel">
+            <h2>Duplicate Checker</h2>
+            <p class="hint">Paste or upload new/harvested keywords to check whether they're already targeted in this bulk file — with which match type and against which ASIN(s). ASIN-looking terms are also checked against existing Product Targeting.</p>
+            <div id="checker-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
+
+            <div id="checker-content" class="hidden">
+              <div class="checker-input-row">
+                <textarea id="checker-textarea" class="textarea-input" rows="8" placeholder="Paste one keyword (or ASIN) per line..."></textarea>
+                <div class="checker-input-side">
+                  <input type="file" id="checker-file-input" accept=".csv,.txt" hidden />
+                  <button id="checker-file-btn" class="btn btn-secondary">Upload .csv / .txt</button>
+                  <div class="drop-sub">One term per line (or first CSV column)</div>
+                  <button id="checker-run-btn" class="btn btn-primary">Check for Duplicates</button>
+                  <button id="checker-clear-btn" class="btn btn-tertiary">Clear</button>
+                </div>
+              </div>
+
+              <div id="checker-results-wrap" class="hidden">
+                <div class="summary-row">
+                  <div class="summary-card">
+                    <div class="summary-label">Terms checked</div>
+                    <div id="chk-stat-total" class="summary-value">0</div>
+                  </div>
+                  <div class="summary-card good">
+                    <div class="summary-label">New (safe to add)</div>
+                    <div id="chk-stat-new" class="summary-value">0</div>
+                  </div>
+                  <div class="summary-card warn">
+                    <div class="summary-label">Already targeted</div>
+                    <div id="chk-stat-existing" class="summary-value">0</div>
+                  </div>
+                  <div class="summary-card bad">
+                    <div class="summary-label">Blocked by negative</div>
+                    <div id="chk-stat-negative" class="summary-value">0</div>
+                  </div>
+                </div>
+                <div id="checker-results-table" class="table-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
-    <nav class="tabs" role="tablist">
-      <button class="tab-btn active" data-tab="upload" role="tab">1. Bulk File Upload</button>
-      <button class="tab-btn" data-tab="duplicator" role="tab">2. Duplicator</button>
-      <button class="tab-btn" data-tab="checker" role="tab">3. Duplicate Checker</button>
-    </nav>
-  </header>
-
-  <main>
-    <!-- TAB 1: BULK FILE UPLOAD -->
-    <section id="tab-upload" class="tab-panel active">
-      <div class="panel">
-        <h2>Upload Bulk File</h2>
-        <p class="hint">Upload the Amazon Ads Bulk Sheet export (.xlsx). It will be parsed entirely in your browser — nothing is uploaded to a server.</p>
-        <div id="drop-zone" class="drop-zone">
-          <input type="file" id="file-input" accept=".xlsx,.xls" hidden />
-          <div class="drop-zone-content">
-            <div class="drop-icon">📂</div>
-            <div><strong>Click to choose a file</strong> or drag &amp; drop it here</div>
-            <div class="drop-sub">.xlsx bulk export</div>
-          </div>
-        </div>
-        <div id="upload-error" class="error-box hidden"></div>
-
-        <div id="upload-summary" class="summary hidden">
-          <div class="summary-row">
-            <div class="summary-card">
-              <div class="summary-label">File</div>
-              <div id="sum-filename" class="summary-value small">—</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Sheets parsed</div>
-              <div id="sum-sheets" class="summary-value">—</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Total rows</div>
-              <div id="sum-rows" class="summary-value">—</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Detected currency</div>
-              <div id="sum-currency" class="summary-value">—</div>
-            </div>
-          </div>
-
-          <h3>Entity breakdown</h3>
-          <div id="entity-breakdown" class="table-wrap"></div>
-
-          <h3>Sheets detected</h3>
-          <div id="sheet-breakdown" class="table-wrap"></div>
-
-          <button id="clear-file-btn" class="btn btn-secondary">Clear &amp; Upload a Different File</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 2: DUPLICATOR -->
-    <section id="tab-duplicator" class="tab-panel">
-      <div class="panel">
-        <h2>Duplicator</h2>
-        <p class="hint">Finds Keywords and Product Targets (same normalized text + match type) that are duplicated across more than one ad group — whether in the same campaign or different campaigns. Review the metrics per instance to decide which to keep and which to pause.</p>
-        <div id="duplicator-empty" class="empty-state">Upload a bulk file in the <strong>Bulk File Upload</strong> tab to get started.</div>
-
-        <div id="duplicator-content" class="hidden">
-          <div class="controls-bar">
-            <input type="text" id="dup-search" placeholder="Search target text..." class="text-input" />
-            <select id="dup-product-filter" class="select-input">
-              <option value="all">All ad types</option>
-              <option value="Sponsored Products">Sponsored Products</option>
-              <option value="Sponsored Brands">Sponsored Brands</option>
-              <option value="Sponsored Display">Sponsored Display</option>
-            </select>
-            <select id="dup-matchtype-filter" class="select-input">
-              <option value="all">All match types</option>
-              <option value="Exact">Exact</option>
-              <option value="Phrase">Phrase</option>
-              <option value="Broad">Broad</option>
-              <option value="pt">Product Targeting</option>
-            </select>
-            <label class="checkbox-label">
-              <input type="checkbox" id="dup-include-auto" />
-              Include Auto-targeting default clauses (close-match / loose-match / substitutes / complements)
-            </label>
-            <button id="dup-export-btn" class="btn btn-secondary">Export CSV</button>
-          </div>
-
-          <div class="summary-row">
-            <div class="summary-card">
-              <div class="summary-label">Duplicate groups</div>
-              <div id="dup-stat-groups" class="summary-value">0</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Duplicate instances</div>
-              <div id="dup-stat-instances" class="summary-value">0</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-label">Spend across duplicates</div>
-              <div id="dup-stat-spend" class="summary-value">0</div>
-            </div>
-            <div class="summary-card warn">
-              <div class="summary-label">Wasted spend (non-top, 0 orders)</div>
-              <div id="dup-stat-waste" class="summary-value">0</div>
-            </div>
-          </div>
-
-          <div id="dup-groups-table" class="table-wrap"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: DUPLICATE CHECKER -->
-    <section id="tab-checker" class="tab-panel">
-      <div class="panel">
-        <h2>Duplicate Checker</h2>
-        <p class="hint">Paste or upload new/harvested keywords to check whether they're already targeted in this bulk file, and with which match type. ASIN-looking terms are also checked against existing Product Targeting.</p>
-        <div id="checker-empty" class="empty-state">Upload a bulk file in the <strong>Bulk File Upload</strong> tab to get started.</div>
-
-        <div id="checker-content" class="hidden">
-          <div class="checker-input-row">
-            <textarea id="checker-textarea" class="textarea-input" rows="8" placeholder="Paste one keyword (or ASIN) per line..."></textarea>
-            <div class="checker-input-side">
-              <input type="file" id="checker-file-input" accept=".csv,.txt" hidden />
-              <button id="checker-file-btn" class="btn btn-secondary">Upload .csv / .txt</button>
-              <div class="drop-sub">One term per line (or first CSV column)</div>
-              <button id="checker-run-btn" class="btn btn-primary">Check for Duplicates</button>
-              <button id="checker-clear-btn" class="btn btn-tertiary">Clear</button>
-            </div>
-          </div>
-
-          <div id="checker-results-wrap" class="hidden">
-            <div class="summary-row">
-              <div class="summary-card">
-                <div class="summary-label">Terms checked</div>
-                <div id="chk-stat-total" class="summary-value">0</div>
-              </div>
-              <div class="summary-card good">
-                <div class="summary-label">New (safe to add)</div>
-                <div id="chk-stat-new" class="summary-value">0</div>
-              </div>
-              <div class="summary-card warn">
-                <div class="summary-label">Already targeted</div>
-                <div id="chk-stat-existing" class="summary-value">0</div>
-              </div>
-              <div class="summary-card bad">
-                <div class="summary-label">Blocked by negative</div>
-                <div id="chk-stat-negative" class="summary-value">0</div>
-              </div>
-            </div>
-            <div class="controls-bar">
-              <button id="checker-export-btn" class="btn btn-secondary">Export CSV</button>
-            </div>
-            <div id="checker-results-table" class="table-wrap"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="app.js"></script>
