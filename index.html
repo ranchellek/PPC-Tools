@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Amazon PPC Bulk File Duplicator Tool</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <h1>Amazon PPC Duplicator Tool</h1>
+      <div id="file-status" class="file-status">No bulk file loaded</div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="upload" role="tab">1. Bulk File Upload</button>
+      <button class="tab-btn" data-tab="duplicator" role="tab">2. Duplicator</button>
+      <button class="tab-btn" data-tab="checker" role="tab">3. Duplicate Checker</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- TAB 1: BULK FILE UPLOAD -->
+    <section id="tab-upload" class="tab-panel active">
+      <div class="panel">
+        <h2>Upload Bulk File</h2>
+        <p class="hint">Upload the Amazon Ads Bulk Sheet export (.xlsx). It will be parsed entirely in your browser — nothing is uploaded to a server.</p>
+        <div id="drop-zone" class="drop-zone">
+          <input type="file" id="file-input" accept=".xlsx,.xls" hidden />
+          <div class="drop-zone-content">
+            <div class="drop-icon">📂</div>
+            <div><strong>Click to choose a file</strong> or drag &amp; drop it here</div>
+            <div class="drop-sub">.xlsx bulk export</div>
+          </div>
+        </div>
+        <div id="upload-error" class="error-box hidden"></div>
+
+        <div id="upload-summary" class="summary hidden">
+          <div class="summary-row">
+            <div class="summary-card">
+              <div class="summary-label">File</div>
+              <div id="sum-filename" class="summary-value small">—</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Sheets parsed</div>
+              <div id="sum-sheets" class="summary-value">—</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Total rows</div>
+              <div id="sum-rows" class="summary-value">—</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Detected currency</div>
+              <div id="sum-currency" class="summary-value">—</div>
+            </div>
+          </div>
+
+          <h3>Entity breakdown</h3>
+          <div id="entity-breakdown" class="table-wrap"></div>
+
+          <h3>Sheets detected</h3>
+          <div id="sheet-breakdown" class="table-wrap"></div>
+
+          <button id="clear-file-btn" class="btn btn-secondary">Clear &amp; Upload a Different File</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DUPLICATOR -->
+    <section id="tab-duplicator" class="tab-panel">
+      <div class="panel">
+        <h2>Duplicator</h2>
+        <p class="hint">Finds Keywords and Product Targets (same normalized text + match type) that are duplicated across more than one ad group — whether in the same campaign or different campaigns. Review the metrics per instance to decide which to keep and which to pause.</p>
+        <div id="duplicator-empty" class="empty-state">Upload a bulk file in the <strong>Bulk File Upload</strong> tab to get started.</div>
+
+        <div id="duplicator-content" class="hidden">
+          <div class="controls-bar">
+            <input type="text" id="dup-search" placeholder="Search target text..." class="text-input" />
+            <select id="dup-product-filter" class="select-input">
+              <option value="all">All ad types</option>
+              <option value="Sponsored Products">Sponsored Products</option>
+              <option value="Sponsored Brands">Sponsored Brands</option>
+              <option value="Sponsored Display">Sponsored Display</option>
+            </select>
+            <select id="dup-matchtype-filter" class="select-input">
+              <option value="all">All match types</option>
+              <option value="Exact">Exact</option>
+              <option value="Phrase">Phrase</option>
+              <option value="Broad">Broad</option>
+              <option value="pt">Product Targeting</option>
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="dup-include-auto" />
+              Include Auto-targeting default clauses (close-match / loose-match / substitutes / complements)
+            </label>
+            <button id="dup-export-btn" class="btn btn-secondary">Export CSV</button>
+          </div>
+
+          <div class="summary-row">
+            <div class="summary-card">
+              <div class="summary-label">Duplicate groups</div>
+              <div id="dup-stat-groups" class="summary-value">0</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Duplicate instances</div>
+              <div id="dup-stat-instances" class="summary-value">0</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Spend across duplicates</div>
+              <div id="dup-stat-spend" class="summary-value">0</div>
+            </div>
+            <div class="summary-card warn">
+              <div class="summary-label">Wasted spend (non-top, 0 orders)</div>
+              <div id="dup-stat-waste" class="summary-value">0</div>
+            </div>
+          </div>
+
+          <div id="dup-groups-table" class="table-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DUPLICATE CHECKER -->
+    <section id="tab-checker" class="tab-panel">
+      <div class="panel">
+        <h2>Duplicate Checker</h2>
+        <p class="hint">Paste or upload new/harvested keywords to check whether they're already targeted in this bulk file, and with which match type. ASIN-looking terms are also checked against existing Product Targeting.</p>
+        <div id="checker-empty" class="empty-state">Upload a bulk file in the <strong>Bulk File Upload</strong> tab to get started.</div>
+
+        <div id="checker-content" class="hidden">
+          <div class="checker-input-row">
+            <textarea id="checker-textarea" class="textarea-input" rows="8" placeholder="Paste one keyword (or ASIN) per line..."></textarea>
+            <div class="checker-input-side">
+              <input type="file" id="checker-file-input" accept=".csv,.txt" hidden />
+              <button id="checker-file-btn" class="btn btn-secondary">Upload .csv / .txt</button>
+              <div class="drop-sub">One term per line (or first CSV column)</div>
+              <button id="checker-run-btn" class="btn btn-primary">Check for Duplicates</button>
+              <button id="checker-clear-btn" class="btn btn-tertiary">Clear</button>
+            </div>
+          </div>
+
+          <div id="checker-results-wrap" class="hidden">
+            <div class="summary-row">
+              <div class="summary-card">
+                <div class="summary-label">Terms checked</div>
+                <div id="chk-stat-total" class="summary-value">0</div>
+              </div>
+              <div class="summary-card good">
+                <div class="summary-label">New (safe to add)</div>
+                <div id="chk-stat-new" class="summary-value">0</div>
+              </div>
+              <div class="summary-card warn">
+                <div class="summary-label">Already targeted</div>
+                <div id="chk-stat-existing" class="summary-value">0</div>
+              </div>
+              <div class="summary-card bad">
+                <div class="summary-label">Blocked by negative</div>
+                <div id="chk-stat-negative" class="summary-value">0</div>
+              </div>
+            </div>
+            <div class="controls-bar">
+              <button id="checker-export-btn" class="btn btn-secondary">Export CSV</button>
+            </div>
+            <div id="checker-results-table" class="table-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
