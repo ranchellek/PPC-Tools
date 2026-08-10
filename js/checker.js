@@ -140,7 +140,7 @@
         <td>${r.matches.length}</td>
         <td class="small-muted">${escapeHtml(recommendationFor(r))}</td>
       </tr>`;
-      html += `<tr class="detail-row hidden" data-detail-idx="${ri}"><td colspan="5">${renderMatchTable(r.matches)}</td></tr>`;
+      html += `<tr class="detail-row hidden" data-detail-idx="${ri}"><td colspan="5">${renderMatchTable(r.matches, targetAsin)}</td></tr>`;
     });
 
     html += "</tbody></table>";
@@ -159,7 +159,20 @@
     });
   }
 
-  function renderMatchTable(matches) {
+  function renderAsinCell(i, targetAsin) {
+    const others = getAsinsForRow(i).filter((a) => a !== targetAsin);
+    let html = `<span class="pill pill-asin">${escapeHtml(targetAsin)}</span>`;
+    if (others.length) {
+      const options = others.map((a) => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join("");
+      html += `<select class="asin-mini-select" title="This ad group also advertises other ASINs">
+        <option value="">+${others.length} more</option>
+        ${options}
+      </select>`;
+    }
+    return html;
+  }
+
+  function renderMatchTable(matches, targetAsin) {
     if (!matches.length) return '<div class="empty-state">No existing matches.</div>';
     let html = `<table class="detail-inner-table"><thead><tr>
       <th>Match Type</th><th>Campaign</th><th>Ad Group</th><th>Campaign Status</th><th>ASIN Advertised</th>
@@ -168,13 +181,12 @@
     matches.forEach((i) => {
       const matchTypeLabel = i.kind === "keyword" ? i.matchType || "—" : "Product Targeting";
       const campaignStatus = i.campaignState || i.state;
-      const asinLabel = getAsinsForRow(i).join(", ") || "—";
       html += `<tr>
         <td>${escapeHtml(matchTypeLabel)}</td>
         <td>${escapeHtml(i.campaignName || "—")}</td>
         <td>${escapeHtml(i.adGroupName || "—")}</td>
         <td>${statePill(campaignStatus)}</td>
-        <td><span class="pill pill-asin">${escapeHtml(asinLabel)}</span></td>
+        <td class="asin-cell">${renderAsinCell(i, targetAsin)}</td>
         <td>${fmtInt(i.impressions)}</td>
         <td>${fmtInt(i.clicks)}</td>
         <td>${fmtPct(i.ctr)}</td>
@@ -205,6 +217,7 @@
           "Ad Group": "",
           "Campaign Status": "",
           "ASIN Advertised": "",
+          "Other ASINs Advertised": "",
           Impressions: "",
           Clicks: "",
           Spend: "",
@@ -224,7 +237,10 @@
           Campaign: i.campaignName || "",
           "Ad Group": i.adGroupName || "",
           "Campaign Status": i.campaignState || i.state || "",
-          "ASIN Advertised": getAsinsForRow(i).join(", "),
+          "ASIN Advertised": targetAsin,
+          "Other ASINs Advertised": getAsinsForRow(i)
+            .filter((a) => a !== targetAsin)
+            .join(", "),
           Impressions: i.impressions,
           Clicks: i.clicks,
           Spend: i.spend.toFixed(2),

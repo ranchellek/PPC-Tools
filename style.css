@@ -401,6 +401,20 @@ tbody tr:hover { background: #fafbfc; }
 .pill-neutral { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
 .pill-asin { background: #eef1f6; color: #33455c; border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+.asin-cell { white-space: nowrap; }
+
+.asin-mini-select {
+  margin-left: 4px;
+  max-width: 90px;
+  font-size: 11px;
+  padding: 1px 3px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
 .status-new { color: var(--good); font-weight: 700; }
 .status-existing { color: var(--warn); font-weight: 700; }
 
