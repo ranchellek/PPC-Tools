@@ -1,7 +1,12 @@
-/* Duplicate Checker tool — takes pasted/uploaded harvested keywords (or
- * ASINs) and checks whether they're already targeted in the bulk file,
- * with which match type, against which ASIN(s), and whether they're
- * blocked by an existing negative.
+/* New Target Duplicate Checker — prevents fresh keyword/ASIN research
+ * from creating new duplication in the account.
+ *
+ * Input: a list of newly researched keywords/ASINs, plus the specific
+ * ASIN they're meant to be advertised under.
+ * Logic: normalize and match new targets against existing, currently
+ * active targets, scoped to that same ASIN, by text + match type.
+ * Output: per new target, whether it's already targeted — and if so,
+ * in which campaign, ad group, ASIN, and match type.
  *
  * Self-contained: registers itself with PPCTools and only touches DOM
  * elements inside #tab-checker.
@@ -10,21 +15,22 @@
   "use strict";
 
   const PPC = window.PPCTools;
-  const { state, escapeHtml, downloadCsv, statePill, toggleEmptyContent, isEnabled, normText, getAsinsForRow } = PPC;
+  const { state, escapeHtml, downloadCsv, statePill, toggleEmptyContent, isActiveRow, normText, getAsinsForRow } = PPC;
 
   const ASIN_RE = /^b0[a-z0-9]{8}$/i;
 
-  let checkerIndex = null;
   let checkerResults = [];
 
   /* ---------------------------------------------------------------------
-   * Index & matching
+   * Index & matching — scoped to active targets under one advertised ASIN
    * ------------------------------------------------------------------- */
-  function buildCheckerIndex(rows) {
+  function buildCheckerIndex(rows, targetAsin) {
     const index = new Map();
     rows.forEach((r) => {
       if (!["keyword", "negativeKeyword", "productTargeting", "negativeProductTargeting"].includes(r.kind)) return;
       if (!r.normTargetText) return;
+      if (!isActiveRow(r)) return;
+      if (!getAsinsForRow(r).includes(targetAsin)) return;
       if (!index.has(r.normTargetText)) index.set(r.normTargetText, { positive: [], negative: [] });
       const bucket = r.kind === "negativeKeyword" || r.kind === "negativeProductTargeting" ? "negative" : "positive";
       index.get(r.normTargetText)[bucket].push(r);
@@ -59,14 +65,12 @@
   }
 
   function recommendationFor(result) {
-    if (result.status === "new") return "New — not currently targeted. Safe to add.";
+    if (result.status === "new") return "New — not currently targeted under this ASIN. Safe to add.";
     if (result.status === "negative")
-      return "Blocked by a negative match elsewhere — adding as a positive target may conflict with that negative.";
+      return "Blocked by an active negative match under this ASIN — adding as a positive target may conflict with it.";
     if (result.status === "mixed")
-      return "Already targeted AND blocked by a negative elsewhere — review placements before adding again.";
-    const allPaused = result.positive.every((r) => !isEnabled(r));
-    if (allPaused) return "Previously targeted but currently paused everywhere — safe to reactivate or re-add.";
-    return "Already actively targeted — adding again may create internal competition.";
+      return "Already actively targeted AND blocked by a negative under this ASIN — review before adding again.";
+    return "Already actively targeted under this ASIN — adding again may create internal competition.";
   }
 
   function parseTerms(text) {
@@ -113,16 +117,34 @@
     toggleEmptyContent("checker");
   }
 
+  function showAsinError(msg) {
+    const box = document.getElementById("checker-asin-error");
+    box.textContent = msg;
+    box.classList.remove("hidden");
+  }
+
+  function hideAsinError() {
+    document.getElementById("checker-asin-error").classList.add("hidden");
+  }
+
   function runChecker() {
-    if (!checkerIndex) return;
+    hideAsinError();
+    const targetAsin = document.getElementById("checker-asin-input").value.trim().toUpperCase();
+    if (!targetAsin) {
+      showAsinError("Enter the ASIN you plan to advertise these targets under before checking.");
+      return;
+    }
+
     const text = document.getElementById("checker-textarea").value;
     const terms = parseTerms(text);
     if (!terms.length) return;
-    checkerResults = checkTerms(terms, checkerIndex);
-    renderResults();
+
+    const index = buildCheckerIndex(state.allRows, targetAsin);
+    checkerResults = checkTerms(terms, index);
+    renderResults(targetAsin);
   }
 
-  function renderResults() {
+  function renderResults(targetAsin) {
     document.getElementById("checker-results-wrap").classList.remove("hidden");
 
     const newCount = checkerResults.filter((r) => r.status === "new").length;
@@ -141,7 +163,9 @@
       mixed: '<span class="status-mixed">Targeted + Negated</span>',
     };
 
-    let html = `<table><thead><tr>
+    let html = `<p class="small-muted">Checked against active targets under ASIN <span class="pill pill-asin">${escapeHtml(
+      targetAsin
+    )}</span></p><table><thead><tr>
       <th>Term</th><th>Status</th><th>Existing Targeting (Match Type &middot; Campaign / Ad Group &middot; ASIN)</th><th>Negative Matches</th><th>Recommendation</th>
     </tr></thead><tbody>`;
 
@@ -182,6 +206,7 @@
    * Export
    * ------------------------------------------------------------------- */
   function exportCsv() {
+    const targetAsin = document.getElementById("checker-asin-input").value.trim().toUpperCase();
     const rows = checkerResults.map((r) => {
       const pos = dedupeInstanceLabels(r.positive)
         .map((i) => `${i.matchTypeLabel}: ${i.campaignName} / ${i.adGroupName} (${i.state}) [${i.asinLabel}]`)
@@ -190,6 +215,7 @@
         .map((i) => `${i.matchTypeLabel}: ${i.campaignName} / ${i.adGroupName} (${i.state}) [${i.asinLabel}]`)
         .join(" | ");
       return {
+        "Target ASIN": targetAsin,
         Term: r.term,
         Status: r.status,
         "Existing Targeting": pos,
@@ -207,6 +233,8 @@
   function resetUI() {
     document.getElementById("checker-results-wrap").classList.add("hidden");
     document.getElementById("checker-textarea").value = "";
+    document.getElementById("checker-asin-input").value = "";
+    hideAsinError();
     checkerResults = [];
   }
 
@@ -233,12 +261,10 @@
   }
 
   function onFileLoaded() {
-    checkerIndex = buildCheckerIndex(state.allRows);
     resetUI();
   }
 
   function onFileCleared() {
-    checkerIndex = null;
     resetUI();
   }
 

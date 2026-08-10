@@ -1,6 +1,12 @@
-/* Duplicator tool — finds Keywords / Product Targets that share the same
- * normalized text, match type, AND advertised ASIN across more than one
- * ad group, and suggests which instance to keep vs. pause.
+/* Account Duplicate Audit — finds Keywords / Product Targets that compete
+ * against each other within the account, driving up CPC with no added
+ * benefit.
+ *
+ * Input: all currently active (enabled) Keyword / Product Targeting rows.
+ * Logic: group by target text + advertised ASIN + Match Type + Campaign
+ * type (Sponsored Products / Brands / Display). Any group with more than
+ * one entry is a duplicate; groups are ranked by combined spend so the
+ * costliest overlaps surface first.
  *
  * Self-contained: registers itself with PPCTools and only touches DOM
  * elements inside #tab-duplicator.
@@ -9,14 +15,13 @@
   "use strict";
 
   const PPC = window.PPCTools;
-  const { state, escapeHtml, fmtInt, fmtMoney, fmtPct, fmtDec, downloadCsv, statePill, sumMetrics, toggleEmptyContent, isEnabled, normText, getAsinsForRow } =
+  const { state, escapeHtml, fmtInt, fmtMoney, fmtPct, fmtDec, downloadCsv, statePill, sumMetrics, toggleEmptyContent, isActiveRow, normText, getAsinsForRow } =
     PPC;
 
   const ACTION_LABEL = {
     keep: '<span class="action-keep">Keep — top performer</span>',
     review: '<span class="action-review">Review</span>',
     pause: '<span class="action-pause">Pause — no conversions</span>',
-    paused: '<span class="action-paused">Already paused</span>',
   };
 
   let duplicateGroups = [];
@@ -31,6 +36,7 @@
 
     rows.forEach((r) => {
       if (r.kind !== "keyword" && r.kind !== "productTargeting") return;
+      if (!isActiveRow(r)) return;
       if (!r.normTargetText) return;
       if (r.kind === "productTargeting" && !opts.includeAutoClauses && r.isAutoDefaultClause) return;
       if (!r.scopeId) return;
@@ -41,16 +47,15 @@
         return;
       }
       asins.forEach((asin) => {
-        const key = r.kind + "|" + r.normTargetText + "|" + matchKey + "|" + asin;
-        if (!map.has(key)) map.set(key, { kind: r.kind, asin, instances: [] });
+        const key = r.product + "|" + r.kind + "|" + r.normTargetText + "|" + matchKey + "|" + asin;
+        if (!map.has(key)) map.set(key, { product: r.product, kind: r.kind, asin, instances: [] });
         map.get(key).instances.push(r);
       });
     });
 
     const groups = [];
     map.forEach((entry) => {
-      const scopeSet = new Set(entry.instances.map((i) => i.scopeId));
-      if (scopeSet.size < 2) return;
+      if (entry.instances.length < 2) return;
       groups.push(buildGroup(entry));
     });
     groups.sort((a, b) => b.totals.spend - a.totals.spend);
@@ -60,9 +65,6 @@
   function rankInstances(instances) {
     const arr = instances.slice();
     arr.sort((a, b) => {
-      const aEnabled = isEnabled(a),
-        bEnabled = isEnabled(b);
-      if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
       if (b.orders !== a.orders) return b.orders - a.orders;
       if (b.sales !== a.sales) return b.sales - a.sales;
       const aAcos = a.orders > 0 ? a.acos : Infinity;
@@ -74,14 +76,13 @@
   }
 
   function computeAction(inst, idx) {
-    if (!isEnabled(inst)) return "paused";
     if (idx === 0) return "keep";
     if (inst.spend > 0 && inst.orders === 0) return "pause";
     return "review";
   }
 
   function buildGroup(entry) {
-    const { kind, asin, instances } = entry;
+    const { product, kind, asin, instances } = entry;
     const totals = sumMetrics(instances);
 
     const ranked = rankInstances(instances);
@@ -92,11 +93,11 @@
     const wastedSpend = ranked.filter((i) => i.__action === "pause").reduce((s, i) => s + i.spend, 0);
 
     return {
+      product,
       kind,
       asin,
       targetText: instances[0].targetLabel || instances[0].targetText,
       matchType: kind === "keyword" ? instances[0].matchType : "Product Targeting",
-      products: Array.from(new Set(instances.map((i) => i.product))),
       instances: ranked,
       totals,
       wastedSpend,
@@ -117,7 +118,7 @@
 
     return duplicateGroups.filter((g) => {
       if (search && !normText(g.targetText).includes(search) && !normText(g.asin).includes(search)) return false;
-      if (productFilter !== "all" && !g.products.includes(productFilter)) return false;
+      if (productFilter !== "all" && g.product !== productFilter) return false;
       if (matchFilter !== "all") {
         if (matchFilter === "pt") {
           if (g.kind !== "productTargeting") return false;
@@ -166,7 +167,7 @@
     }
 
     let html = `<table><thead><tr>
-      <th></th><th>Target</th><th>Match Type</th><th>ASIN</th><th>Ad Type(s)</th><th># Instances</th>
+      <th></th><th>Target</th><th>Match Type</th><th>ASIN</th><th>Campaign Type</th><th># Entries</th>
       <th>Impr.</th><th>Clicks</th><th>Spend</th><th>Sales</th><th>Orders</th><th>Wasted Spend</th>
     </tr></thead><tbody>`;
 
@@ -176,7 +177,7 @@
         <td>${escapeHtml(g.targetText)}</td>
         <td>${escapeHtml(g.matchType || "—")}</td>
         <td><span class="pill pill-asin">${escapeHtml(g.asin)}</span></td>
-        <td>${g.products.map(escapeHtml).join(", ")}</td>
+        <td>${escapeHtml(g.product)}</td>
         <td>${g.instances.length}</td>
         <td>${fmtInt(g.totals.impressions)}</td>
         <td>${fmtInt(g.totals.clicks)}</td>

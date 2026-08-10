@@ -54,6 +54,17 @@ window.PPCTools = (function () {
     return (r.state || "").toLowerCase() === "enabled";
   }
 
+  // A target only actually competes/serves if its own row, its ad group, and
+  // its campaign are all enabled. Campaign/ad group state is informational-only
+  // on some sheets (e.g. SB classic has no ad group), so a missing value
+  // doesn't disqualify a row — only an explicit non-"enabled" value does.
+  function isActiveRow(r) {
+    if (!isEnabled(r)) return false;
+    if (r.campaignState && r.campaignState.toLowerCase() !== "enabled") return false;
+    if (r.adGroupState && r.adGroupState.toLowerCase() !== "enabled") return false;
+    return true;
+  }
+
   function escapeHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str)
@@ -472,6 +483,7 @@ window.PPCTools = (function () {
     toNum,
     normText,
     isEnabled,
+    isActiveRow,
     escapeHtml,
     fmtInt,
     fmtMoney,

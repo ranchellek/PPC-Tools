@@ -56,7 +56,7 @@
         <section id="tab-duplicator" class="tab-panel">
           <div class="panel">
             <h2>Account Duplicate Audit</h2>
-            <p class="hint">Finds Keywords and Product Targets that share the same normalized text, match type, <strong>and advertised ASIN</strong> across more than one ad group. The same keyword targeting two different products is expected and not flagged — only real overlap on the same product is.</p>
+            <p class="hint">Identifies Keywords and Product Targets competing against each other within the account, which drives up cost-per-click without added benefit. Considers only currently <strong>active (enabled)</strong> targets, grouped by target text + advertised ASIN + match type + campaign type. Any group with more than one entry is a duplicate — ranked by combined spend so the costliest overlaps surface first.</p>
             <div id="duplicator-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
 
             <div id="duplicator-content" class="hidden">
@@ -110,10 +110,16 @@
         <section id="tab-checker" class="tab-panel">
           <div class="panel">
             <h2>New Target Duplicate Checker</h2>
-            <p class="hint">Paste or upload new/harvested keywords to check whether they're already targeted in this bulk file — with which match type and against which ASIN(s). ASIN-looking terms are also checked against existing Product Targeting.</p>
+            <p class="hint">Prevents new keyword research from creating new duplication in the account. Enter the ASIN you plan to advertise, then paste or upload the new keywords/ASINs to check. Matches are limited to currently <strong>active</strong> targets under that same ASIN, by match type.</p>
             <div id="checker-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
 
             <div id="checker-content" class="hidden">
+              <div class="controls-bar">
+                <label for="checker-asin-input" class="field-label">ASIN to be advertised</label>
+                <input type="text" id="checker-asin-input" class="text-input text-input-narrow" placeholder="e.g. B0XXXXXXXX" />
+              </div>
+              <div id="checker-asin-error" class="error-box hidden"></div>
+
               <div class="checker-input-row">
                 <textarea id="checker-textarea" class="textarea-input" rows="8" placeholder="Paste one keyword (or ASIN) per line..."></textarea>
                 <div class="checker-input-side">
