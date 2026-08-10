@@ -243,7 +243,7 @@
   }
 
   PPC.registerTool("checker", {
-    title: "Duplicates Checker",
+    title: "New Target Duplicate Checker",
     init,
     render,
     exportCsv,

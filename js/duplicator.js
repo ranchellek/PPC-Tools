@@ -294,7 +294,7 @@
   }
 
   PPC.registerTool("duplicator", {
-    title: "Duplicator",
+    title: "Account Duplicate Audit",
     init,
     render,
     exportCsv,
