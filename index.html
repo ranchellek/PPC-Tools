@@ -13,18 +13,7 @@
         <div class="app-logo">PPC<span>Tools</span></div>
       </div>
 
-      <div class="sidebar-search">
-        <input type="text" id="global-search" class="search-input" placeholder="Search campaigns, ASINs, targets..." autocomplete="off" />
-      </div>
-
       <nav class="side-nav">
-        <div class="nav-section-label">Performance</div>
-        <button class="nav-btn" data-tab="campaigns">Campaigns</button>
-        <button class="nav-btn" data-tab="matchtype">Match Type</button>
-        <button class="nav-btn" data-tab="placements">Bid Placements</button>
-        <button class="nav-btn" data-tab="asin">ASIN</button>
-        <button class="nav-btn" data-tab="targets">Keywords &amp; Targets</button>
-        <div class="nav-section-label">Duplicate Tools</div>
         <button class="nav-btn" data-tab="duplicator">Duplicator</button>
         <button class="nav-btn" data-tab="checker">Duplicates Checker</button>
       </nav>
@@ -34,7 +23,7 @@
 
     <div class="main-area">
       <header class="topbar">
-        <div class="topbar-title" id="active-tab-title">Campaigns</div>
+        <div class="topbar-title" id="active-tab-title">Duplicator</div>
         <div class="file-menu-wrap">
           <button id="file-menu-btn" class="btn btn-file">
             <span id="file-menu-dot" class="status-dot"></span>
@@ -63,144 +52,6 @@
       </header>
 
       <main class="content">
-        <!-- SEARCH RESULTS -->
-        <section id="tab-search" class="tab-panel">
-          <div class="panel">
-            <h2>Search Results</h2>
-            <p class="hint">Matches for “<span id="search-term-label"></span>” across campaigns, ASINs, and keywords / product targets.</p>
-            <h3>Campaigns (<span id="search-count-campaigns">0</span>)</h3>
-            <div id="search-campaigns-table" class="table-wrap"></div>
-            <h3>ASINs (<span id="search-count-asins">0</span>)</h3>
-            <div id="search-asins-table" class="table-wrap"></div>
-            <h3>Keywords &amp; Product Targets (<span id="search-count-targets">0</span>)</h3>
-            <div id="search-targets-table" class="table-wrap"></div>
-          </div>
-        </section>
-
-        <!-- CAMPAIGNS -->
-        <section id="tab-campaigns" class="tab-panel active">
-          <div class="panel">
-            <h2>Campaigns</h2>
-            <p class="hint">Campaign-level performance across Sponsored Products, Sponsored Brands, and Sponsored Display.</p>
-            <div id="campaigns-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
-            <div id="campaigns-content" class="hidden">
-              <div class="controls-bar">
-                <input type="text" id="camp-search" class="text-input" placeholder="Search campaign name..." />
-                <select id="camp-product-filter" class="select-input">
-                  <option value="all">All ad types</option>
-                  <option value="Sponsored Products">Sponsored Products</option>
-                  <option value="Sponsored Brands">Sponsored Brands</option>
-                  <option value="Sponsored Display">Sponsored Display</option>
-                </select>
-                <select id="camp-state-filter" class="select-input">
-                  <option value="all">All states</option>
-                  <option value="enabled">Enabled</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-              <div class="summary-row">
-                <div class="summary-card"><div class="summary-label">Campaigns</div><div id="camp-stat-count" class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Spend</div><div id="camp-stat-spend" class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">Sales</div><div id="camp-stat-sales" class="summary-value">0</div></div>
-                <div class="summary-card"><div class="summary-label">ACOS</div><div id="camp-stat-acos" class="summary-value">0</div></div>
-              </div>
-              <div id="campaigns-table" class="table-wrap"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- MATCH TYPE -->
-        <section id="tab-matchtype" class="tab-panel">
-          <div class="panel">
-            <h2>Match Type Performance</h2>
-            <p class="hint">Performance rolled up by targeting type. Product Targeting rows (used in Auto campaigns and product-targeted ad groups) don't carry a match type, so they're grouped as <strong>Auto</strong>. Click a row to break it down by ad type.</p>
-            <div id="matchtype-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
-            <div id="matchtype-content" class="hidden">
-              <div id="matchtype-table" class="table-wrap"></div>
-              <h3>By Match Type &times; Ad Type</h3>
-              <div id="matchtype-breakdown" class="table-wrap"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- BID PLACEMENTS -->
-        <section id="tab-placements" class="tab-panel">
-          <div class="panel">
-            <h2>Bid Placements</h2>
-            <p class="hint">Performance by placement modifier (Top of Search, Rest of Search, Product Pages for Sponsored Products; Home / Detail Page / Other for Sponsored Brands).</p>
-            <div id="placements-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
-            <div id="placements-content" class="hidden">
-              <div class="controls-bar">
-                <select id="place-product-filter" class="select-input">
-                  <option value="all">All ad types</option>
-                  <option value="Sponsored Products">Sponsored Products</option>
-                  <option value="Sponsored Brands">Sponsored Brands</option>
-                  <option value="Sponsored Display">Sponsored Display</option>
-                </select>
-              </div>
-              <div id="placements-table" class="table-wrap"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ASIN -->
-        <section id="tab-asin" class="tab-panel">
-          <div class="panel">
-            <h2>ASIN Performance</h2>
-            <p class="hint">Performance by advertised ASIN, aggregated from Product Ad rows. Sponsored Brands reports at campaign level only and isn't broken out here.</p>
-            <div id="asin-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
-            <div id="asin-content" class="hidden">
-              <div class="controls-bar">
-                <input type="text" id="asin-search" class="text-input" placeholder="Search ASIN or SKU..." />
-                <select id="asin-state-filter" class="select-input">
-                  <option value="all">All states</option>
-                  <option value="enabled">Enabled</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-              <div id="asin-table" class="table-wrap"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- KEYWORDS & TARGETS -->
-        <section id="tab-targets" class="tab-panel">
-          <div class="panel">
-            <h2>Keywords &amp; Product Target Performance</h2>
-            <p class="hint">Every Keyword and Product Targeting row, individually, with the ASIN(s) advertised by its ad group.</p>
-            <div id="targets-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
-            <div id="targets-content" class="hidden">
-              <div class="controls-bar">
-                <input type="text" id="tgt-search" class="text-input" placeholder="Search target text..." />
-                <select id="tgt-product-filter" class="select-input">
-                  <option value="all">All ad types</option>
-                  <option value="Sponsored Products">Sponsored Products</option>
-                  <option value="Sponsored Brands">Sponsored Brands</option>
-                  <option value="Sponsored Display">Sponsored Display</option>
-                </select>
-                <select id="tgt-entity-filter" class="select-input">
-                  <option value="all">Keywords + Product Targets</option>
-                  <option value="keyword">Keywords only</option>
-                  <option value="productTargeting">Product Targets only</option>
-                </select>
-                <select id="tgt-matchtype-filter" class="select-input">
-                  <option value="all">All match types</option>
-                  <option value="Exact">Exact</option>
-                  <option value="Phrase">Phrase</option>
-                  <option value="Broad">Broad</option>
-                </select>
-                <select id="tgt-state-filter" class="select-input">
-                  <option value="all">All states</option>
-                  <option value="enabled">Enabled</option>
-                  <option value="paused">Paused</option>
-                </select>
-              </div>
-              <div id="targets-table" class="table-wrap"></div>
-              <div id="targets-pager" class="pager"></div>
-            </div>
-          </div>
-        </section>
-
         <!-- DUPLICATOR -->
         <section id="tab-duplicator" class="tab-panel">
           <div class="panel">
@@ -303,6 +154,8 @@
   </div>
 
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/duplicator.js"></script>
+  <script src="js/checker.js"></script>
 </body>
 </html>
