@@ -6,7 +6,8 @@
  * Logic: normalize and match new targets against existing, currently
  * active targets, scoped to that same ASIN, by text + match type.
  * Output: per new target, whether it's already targeted — and if so,
- * in which campaign, ad group, ASIN, and match type.
+ * in which campaign, ad group, campaign status, ASIN, and match type,
+ * plus that existing target's own performance for reference.
  *
  * Self-contained: registers itself with PPCTools and only touches DOM
  * elements inside #tab-checker.
@@ -15,7 +16,7 @@
   "use strict";
 
   const PPC = window.PPCTools;
-  const { state, escapeHtml, downloadCsv, statePill, toggleEmptyContent, isActiveRow, normText, getAsinsForRow } = PPC;
+  const { state, escapeHtml, fmtInt, fmtMoney, fmtPct, downloadCsv, statePill, toggleEmptyContent, isActiveRow, normText, getAsinsForRow } = PPC;
 
   const ASIN_RE = /^b0[a-z0-9]{8}$/i;
 
@@ -27,13 +28,12 @@
   function buildCheckerIndex(rows, targetAsin) {
     const index = new Map();
     rows.forEach((r) => {
-      if (!["keyword", "negativeKeyword", "productTargeting", "negativeProductTargeting"].includes(r.kind)) return;
+      if (r.kind !== "keyword" && r.kind !== "productTargeting") return;
       if (!r.normTargetText) return;
       if (!isActiveRow(r)) return;
       if (!getAsinsForRow(r).includes(targetAsin)) return;
-      if (!index.has(r.normTargetText)) index.set(r.normTargetText, { positive: [], negative: [] });
-      const bucket = r.kind === "negativeKeyword" || r.kind === "negativeProductTargeting" ? "negative" : "positive";
-      index.get(r.normTargetText)[bucket].push(r);
+      if (!index.has(r.normTargetText)) index.set(r.normTargetText, []);
+      index.get(r.normTargetText).push(r);
     });
     return index;
   }
@@ -41,35 +41,21 @@
   function checkTerms(terms, index) {
     return terms.map((term) => {
       const norm = normText(term);
-      let entry = index.get(norm) || { positive: [], negative: [] };
+      let matches = index.get(norm) || [];
 
       if (ASIN_RE.test(term.trim())) {
-        const ptNorm = `asin="${norm}"`;
-        const ptEntry = index.get(ptNorm);
-        if (ptEntry) {
-          entry = {
-            positive: entry.positive.concat(ptEntry.positive),
-            negative: entry.negative.concat(ptEntry.negative),
-          };
-        }
+        const ptMatches = index.get(`asin="${norm}"`);
+        if (ptMatches) matches = matches.concat(ptMatches);
       }
 
-      let status;
-      if (entry.positive.length === 0 && entry.negative.length === 0) status = "new";
-      else if (entry.positive.length > 0 && entry.negative.length > 0) status = "mixed";
-      else if (entry.positive.length > 0) status = "existing";
-      else status = "negative";
+      matches = matches.slice().sort((a, b) => b.spend - a.spend);
 
-      return { term, norm, status, positive: entry.positive, negative: entry.negative };
+      return { term, norm, status: matches.length ? "existing" : "new", matches };
     });
   }
 
   function recommendationFor(result) {
     if (result.status === "new") return "New — not currently targeted under this ASIN. Safe to add.";
-    if (result.status === "negative")
-      return "Blocked by an active negative match under this ASIN — adding as a positive target may conflict with it.";
-    if (result.status === "mixed")
-      return "Already actively targeted AND blocked by a negative under this ASIN — review before adding again.";
     return "Already actively targeted under this ASIN — adding again may create internal competition.";
   }
 
@@ -89,25 +75,6 @@
         out.push(term);
       });
     return out;
-  }
-
-  function dedupeInstanceLabels(instances) {
-    const map = new Map();
-    instances.forEach((i) => {
-      const matchTypeLabel = i.kind === "keyword" || i.kind === "negativeKeyword" ? i.matchType || "—" : "Product Targeting";
-      const asins = getAsinsForRow(i);
-      const asinLabel = asins.length ? asins.join(", ") : "—";
-      const key = matchTypeLabel + "|" + (i.campaignName || "") + "|" + (i.adGroupName || "") + "|" + i.state + "|" + asinLabel;
-      if (!map.has(key))
-        map.set(key, {
-          matchTypeLabel,
-          campaignName: i.campaignName || "—",
-          adGroupName: i.adGroupName || "—",
-          state: i.state,
-          asinLabel,
-        });
-    });
-    return Array.from(map.values());
   }
 
   /* ---------------------------------------------------------------------
@@ -148,58 +115,77 @@
     document.getElementById("checker-results-wrap").classList.remove("hidden");
 
     const newCount = checkerResults.filter((r) => r.status === "new").length;
-    const existingCount = checkerResults.filter((r) => r.status === "existing" || r.status === "mixed").length;
-    const negativeCount = checkerResults.filter((r) => r.status === "negative" || r.status === "mixed").length;
+    const existingCount = checkerResults.filter((r) => r.status === "existing").length;
 
     document.getElementById("chk-stat-total").textContent = checkerResults.length.toLocaleString();
     document.getElementById("chk-stat-new").textContent = newCount.toLocaleString();
     document.getElementById("chk-stat-existing").textContent = existingCount.toLocaleString();
-    document.getElementById("chk-stat-negative").textContent = negativeCount.toLocaleString();
 
     const STATUS_LABEL = {
       new: '<span class="status-new">New</span>',
       existing: '<span class="status-existing">Already Targeted</span>',
-      negative: '<span class="status-negative">Blocked by Negative</span>',
-      mixed: '<span class="status-mixed">Targeted + Negated</span>',
     };
 
     let html = `<p class="small-muted">Checked against active targets under ASIN <span class="pill pill-asin">${escapeHtml(
       targetAsin
     )}</span></p><table><thead><tr>
-      <th>Term</th><th>Status</th><th>Existing Targeting (Match Type &middot; Campaign / Ad Group &middot; ASIN)</th><th>Negative Matches</th><th>Recommendation</th>
+      <th></th><th>Term</th><th>Status</th><th># Matches</th><th>Recommendation</th>
     </tr></thead><tbody>`;
 
-    checkerResults.forEach((r) => {
-      const posList = dedupeInstanceLabels(r.positive)
-        .slice(0, 6)
-        .map(
-          (i) =>
-            `<div>${escapeHtml(i.matchTypeLabel)} · ${escapeHtml(i.campaignName)} / ${escapeHtml(i.adGroupName)} ${statePill(
-              i.state
-            )} <span class="pill pill-asin">${escapeHtml(i.asinLabel)}</span></div>`
-        )
-        .join("");
-      const negList = dedupeInstanceLabels(r.negative)
-        .slice(0, 6)
-        .map(
-          (i) =>
-            `<div>${escapeHtml(i.matchTypeLabel)} · ${escapeHtml(i.campaignName)} / ${escapeHtml(i.adGroupName)} ${statePill(
-              i.state
-            )} <span class="pill pill-asin">${escapeHtml(i.asinLabel)}</span></div>`
-        )
-        .join("");
-
-      html += `<tr>
+    checkerResults.forEach((r, ri) => {
+      html += `<tr class="group-row" data-idx="${ri}">
+        <td>${r.matches.length ? '<span class="expand-arrow">▶</span>' : ""}</td>
         <td>${escapeHtml(r.term)}</td>
         <td>${STATUS_LABEL[r.status]}</td>
-        <td>${posList || "—"}</td>
-        <td>${negList || "—"}</td>
+        <td>${r.matches.length}</td>
         <td class="small-muted">${escapeHtml(recommendationFor(r))}</td>
       </tr>`;
+      html += `<tr class="detail-row hidden" data-detail-idx="${ri}"><td colspan="5">${renderMatchTable(r.matches)}</td></tr>`;
     });
 
     html += "</tbody></table>";
-    document.getElementById("checker-results-table").innerHTML = html;
+    const container = document.getElementById("checker-results-table");
+    container.innerHTML = html;
+
+    container.querySelectorAll(".group-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const idx = row.dataset.idx;
+        const detail = container.querySelector(`[data-detail-idx="${idx}"]`);
+        const arrow = row.querySelector(".expand-arrow");
+        if (!arrow) return;
+        detail.classList.toggle("hidden");
+        arrow.classList.toggle("open");
+      });
+    });
+  }
+
+  function renderMatchTable(matches) {
+    if (!matches.length) return '<div class="empty-state">No existing matches.</div>';
+    let html = `<table class="detail-inner-table"><thead><tr>
+      <th>Match Type</th><th>Campaign</th><th>Ad Group</th><th>Campaign Status</th><th>ASIN Advertised</th>
+      <th>Impr.</th><th>Clicks</th><th>CTR</th><th>Spend</th><th>Sales</th><th>Orders</th><th>ACOS</th>
+    </tr></thead><tbody>`;
+    matches.forEach((i) => {
+      const matchTypeLabel = i.kind === "keyword" ? i.matchType || "—" : "Product Targeting";
+      const campaignStatus = i.campaignState || i.state;
+      const asinLabel = getAsinsForRow(i).join(", ") || "—";
+      html += `<tr>
+        <td>${escapeHtml(matchTypeLabel)}</td>
+        <td>${escapeHtml(i.campaignName || "—")}</td>
+        <td>${escapeHtml(i.adGroupName || "—")}</td>
+        <td>${statePill(campaignStatus)}</td>
+        <td><span class="pill pill-asin">${escapeHtml(asinLabel)}</span></td>
+        <td>${fmtInt(i.impressions)}</td>
+        <td>${fmtInt(i.clicks)}</td>
+        <td>${fmtPct(i.ctr)}</td>
+        <td>${fmtMoney(i.spend)}</td>
+        <td>${fmtMoney(i.sales)}</td>
+        <td>${fmtInt(i.orders)}</td>
+        <td>${fmtPct(i.acos)}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    return html;
   }
 
   /* ---------------------------------------------------------------------
@@ -207,21 +193,47 @@
    * ------------------------------------------------------------------- */
   function exportCsv() {
     const targetAsin = document.getElementById("checker-asin-input").value.trim().toUpperCase();
-    const rows = checkerResults.map((r) => {
-      const pos = dedupeInstanceLabels(r.positive)
-        .map((i) => `${i.matchTypeLabel}: ${i.campaignName} / ${i.adGroupName} (${i.state}) [${i.asinLabel}]`)
-        .join(" | ");
-      const neg = dedupeInstanceLabels(r.negative)
-        .map((i) => `${i.matchTypeLabel}: ${i.campaignName} / ${i.adGroupName} (${i.state}) [${i.asinLabel}]`)
-        .join(" | ");
-      return {
-        "Target ASIN": targetAsin,
-        Term: r.term,
-        Status: r.status,
-        "Existing Targeting": pos,
-        "Negative Matches": neg,
-        Recommendation: recommendationFor(r),
-      };
+    const rows = [];
+    checkerResults.forEach((r) => {
+      if (!r.matches.length) {
+        rows.push({
+          "Target ASIN": targetAsin,
+          Term: r.term,
+          Status: r.status,
+          "Match Type": "",
+          Campaign: "",
+          "Ad Group": "",
+          "Campaign Status": "",
+          "ASIN Advertised": "",
+          Impressions: "",
+          Clicks: "",
+          Spend: "",
+          Sales: "",
+          Orders: "",
+          "ACOS %": "",
+          Recommendation: recommendationFor(r),
+        });
+        return;
+      }
+      r.matches.forEach((i) => {
+        rows.push({
+          "Target ASIN": targetAsin,
+          Term: r.term,
+          Status: r.status,
+          "Match Type": i.kind === "keyword" ? i.matchType || "" : "Product Targeting",
+          Campaign: i.campaignName || "",
+          "Ad Group": i.adGroupName || "",
+          "Campaign Status": i.campaignState || i.state || "",
+          "ASIN Advertised": getAsinsForRow(i).join(", "),
+          Impressions: i.impressions,
+          Clicks: i.clicks,
+          Spend: i.spend.toFixed(2),
+          Sales: i.sales.toFixed(2),
+          Orders: i.orders,
+          "ACOS %": (i.acos * 100).toFixed(2),
+          Recommendation: recommendationFor(r),
+        });
+      });
     });
     if (!rows.length) return;
     downloadCsv("duplicate_checker_results.csv", rows);

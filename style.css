@@ -272,6 +272,10 @@ thead th {
   top: 0;
 }
 
+th.sortable-th { cursor: pointer; user-select: none; }
+th.sortable-th:hover { color: var(--text); }
+th.sorted { color: var(--primary-dark); }
+
 tbody td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
@@ -289,7 +293,7 @@ tbody tr:hover { background: #fafbfc; }
   cursor: pointer;
 }
 
-.btn:focus-visible, .nav-btn:focus-visible, input:focus-visible, select:focus-visible {
+.btn:focus-visible, .nav-btn:focus-visible, th.sortable-th:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -325,6 +329,25 @@ tbody tr:hover { background: #fafbfc; }
 .text-input-narrow { min-width: 160px; max-width: 200px; }
 
 .field-label { font-size: 13.5px; font-weight: 600; color: var(--text); }
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-field .field-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.filter-field .text-input,
+.filter-field .select-input {
+  min-width: 180px;
+}
 
 .checkbox-label {
   display: flex;
@@ -380,8 +403,6 @@ tbody tr:hover { background: #fafbfc; }
 
 .status-new { color: var(--good); font-weight: 700; }
 .status-existing { color: var(--warn); font-weight: 700; }
-.status-negative { color: var(--bad); font-weight: 700; }
-.status-mixed { color: var(--bad); font-weight: 700; }
 
 .action-keep { color: var(--good); font-weight: 700; }
 .action-review { color: var(--warn); font-weight: 700; }

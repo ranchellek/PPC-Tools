@@ -61,20 +61,33 @@
 
             <div id="duplicator-content" class="hidden">
               <div class="controls-bar">
-                <input type="text" id="dup-search" placeholder="Search target text or ASIN..." class="text-input" />
-                <select id="dup-product-filter" class="select-input">
-                  <option value="all">All ad types</option>
-                  <option value="Sponsored Products">Sponsored Products</option>
-                  <option value="Sponsored Brands">Sponsored Brands</option>
-                  <option value="Sponsored Display">Sponsored Display</option>
-                </select>
-                <select id="dup-matchtype-filter" class="select-input">
-                  <option value="all">All match types</option>
-                  <option value="Exact">Exact</option>
-                  <option value="Phrase">Phrase</option>
-                  <option value="Broad">Broad</option>
-                  <option value="pt">Product Targeting</option>
-                </select>
+                <div class="filter-field">
+                  <label for="dup-search" class="field-label">Target</label>
+                  <input type="text" id="dup-search" placeholder="Search target text..." class="text-input" />
+                </div>
+                <div class="filter-field">
+                  <label for="dup-matchtype-filter" class="field-label">Match Type</label>
+                  <select id="dup-matchtype-filter" class="select-input">
+                    <option value="all">All Match Types</option>
+                    <option value="Exact">Exact</option>
+                    <option value="Phrase">Phrase</option>
+                    <option value="Broad">Broad</option>
+                    <option value="pt">Product Targeting</option>
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <label for="dup-asin-filter" class="field-label">ASIN</label>
+                  <input type="text" id="dup-asin-filter" placeholder="Search ASIN..." class="text-input" />
+                </div>
+                <div class="filter-field">
+                  <label for="dup-product-filter" class="field-label">Campaign Type</label>
+                  <select id="dup-product-filter" class="select-input">
+                    <option value="all">All Campaign Types</option>
+                    <option value="Sponsored Products">Sponsored Products</option>
+                    <option value="Sponsored Brands">Sponsored Brands</option>
+                    <option value="Sponsored Display">Sponsored Display</option>
+                  </select>
+                </div>
                 <label class="checkbox-label">
                   <input type="checkbox" id="dup-include-auto" />
                   Include Auto-targeting default clauses (close-match / loose-match / substitutes / complements)
@@ -110,7 +123,7 @@
         <section id="tab-checker" class="tab-panel">
           <div class="panel">
             <h2>New Target Duplicate Checker</h2>
-            <p class="hint">Prevents new keyword research from creating new duplication in the account. Enter the ASIN you plan to advertise, then paste or upload the new keywords/ASINs to check. Matches are limited to currently <strong>active</strong> targets under that same ASIN, by match type.</p>
+            <p class="hint">Prevents new keyword research from creating new duplication in the account. Enter the ASIN you plan to advertise, then paste or upload the new keywords/ASINs to check. Matches are limited to currently <strong>active</strong> targets under that same ASIN, by match type. Expand a term to see the campaigns already targeting it, with campaign status, ASIN advertised, and performance for reference.</p>
             <div id="checker-empty" class="empty-state">Upload a bulk file using the <strong>Upload File</strong> button in the top right to get started.</div>
 
             <div id="checker-content" class="hidden">
@@ -144,10 +157,6 @@
                   <div class="summary-card warn">
                     <div class="summary-label">Already targeted</div>
                     <div id="chk-stat-existing" class="summary-value">0</div>
-                  </div>
-                  <div class="summary-card bad">
-                    <div class="summary-label">Blocked by negative</div>
-                    <div id="chk-stat-negative" class="summary-value">0</div>
                   </div>
                 </div>
                 <div id="checker-results-table" class="table-wrap"></div>

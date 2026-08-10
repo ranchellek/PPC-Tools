@@ -26,6 +26,44 @@
 
   let duplicateGroups = [];
   let unknownAsinCount = 0;
+  let sortState = { key: "spend", dir: "desc" };
+
+  const GROUP_COLUMNS = [
+    { key: "target", label: "Target", type: "text", value: (g) => normText(g.targetText) },
+    { key: "matchType", label: "Match Type", type: "text", value: (g) => g.matchType || "" },
+    { key: "asin", label: "ASIN", type: "text", value: (g) => g.asin },
+    { key: "product", label: "Campaign Type", type: "text", value: (g) => g.product },
+    { key: "count", label: "# Entries", value: (g) => g.instances.length },
+    { key: "impressions", label: "Impr.", value: (g) => g.totals.impressions },
+    { key: "clicks", label: "Clicks", value: (g) => g.totals.clicks },
+    { key: "spend", label: "Spend", value: (g) => g.totals.spend },
+    { key: "sales", label: "Sales", value: (g) => g.totals.sales },
+    { key: "orders", label: "Orders", value: (g) => g.totals.orders },
+    { key: "waste", label: "Wasted Spend", value: (g) => g.wastedSpend },
+  ];
+
+  function setSort(key) {
+    if (sortState.key === key) {
+      sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
+      return;
+    }
+    const col = GROUP_COLUMNS.find((c) => c.key === key);
+    sortState.key = key;
+    sortState.dir = col && col.type === "text" ? "asc" : "desc";
+  }
+
+  function sortGroups(groups) {
+    const col = GROUP_COLUMNS.find((c) => c.key === sortState.key);
+    if (!col) return groups;
+    return groups.slice().sort((a, b) => {
+      const av = col.value(a);
+      const bv = col.value(b);
+      if (typeof av === "string" || typeof bv === "string") {
+        return sortState.dir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+      }
+      return sortState.dir === "asc" ? av - bv : bv - av;
+    });
+  }
 
   /* ---------------------------------------------------------------------
    * Grouping logic
@@ -113,11 +151,13 @@
 
   function filteredDuplicateGroups() {
     const search = normText(document.getElementById("dup-search").value);
+    const asinSearch = normText(document.getElementById("dup-asin-filter").value);
     const productFilter = document.getElementById("dup-product-filter").value;
     const matchFilter = document.getElementById("dup-matchtype-filter").value;
 
     return duplicateGroups.filter((g) => {
-      if (search && !normText(g.targetText).includes(search) && !normText(g.asin).includes(search)) return false;
+      if (search && !normText(g.targetText).includes(search)) return false;
+      if (asinSearch && !normText(g.asin).includes(asinSearch)) return false;
       if (productFilter !== "all" && g.product !== productFilter) return false;
       if (matchFilter !== "all") {
         if (matchFilter === "pt") {
@@ -137,7 +177,7 @@
     if (!toggleEmptyContent("duplicator")) return;
     if (duplicateGroups.length === 0) recomputeDuplicateGroups();
 
-    const groups = filteredDuplicateGroups();
+    const groups = sortGroups(filteredDuplicateGroups());
 
     const totalInstances = groups.reduce((s, g) => s + g.instances.length, 0);
     const totalSpend = groups.reduce((s, g) => s + g.totals.spend, 0);
@@ -166,10 +206,13 @@
       return;
     }
 
-    let html = `<table><thead><tr>
-      <th></th><th>Target</th><th>Match Type</th><th>ASIN</th><th>Campaign Type</th><th># Entries</th>
-      <th>Impr.</th><th>Clicks</th><th>Spend</th><th>Sales</th><th>Orders</th><th>Wasted Spend</th>
-    </tr></thead><tbody>`;
+    const headCells = GROUP_COLUMNS.map((c) => {
+      const active = c.key === sortState.key;
+      const arrow = active ? (sortState.dir === "asc" ? " ▲" : " ▼") : "";
+      return `<th class="sortable-th${active ? " sorted" : ""}" data-sort-key="${c.key}">${escapeHtml(c.label)}${arrow}</th>`;
+    }).join("");
+
+    let html = `<table><thead><tr><th></th>${headCells}</tr></thead><tbody>`;
 
     groups.forEach((g, gi) => {
       html += `<tr class="group-row" data-idx="${gi}">
@@ -191,6 +234,13 @@
 
     html += "</tbody></table>";
     container.innerHTML = html;
+
+    container.querySelectorAll("th.sortable-th").forEach((th) => {
+      th.addEventListener("click", () => {
+        setSort(th.dataset.sortKey);
+        render();
+      });
+    });
 
     container.querySelectorAll(".group-row").forEach((row) => {
       row.addEventListener("click", () => {
@@ -274,7 +324,7 @@
    * Lifecycle
    * ------------------------------------------------------------------- */
   function init() {
-    ["dup-search", "dup-product-filter", "dup-matchtype-filter"].forEach((id) => {
+    ["dup-search", "dup-asin-filter", "dup-product-filter", "dup-matchtype-filter"].forEach((id) => {
       document.getElementById(id).addEventListener("input", render);
       document.getElementById(id).addEventListener("change", render);
     });
@@ -287,11 +337,13 @@
   function onFileLoaded() {
     duplicateGroups = [];
     unknownAsinCount = 0;
+    sortState = { key: "spend", dir: "desc" };
   }
 
   function onFileCleared() {
     duplicateGroups = [];
     unknownAsinCount = 0;
+    sortState = { key: "spend", dir: "desc" };
   }
 
   PPC.registerTool("duplicator", {
