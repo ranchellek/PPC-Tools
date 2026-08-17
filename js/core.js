@@ -22,8 +22,10 @@ window.PPCTools = (function () {
   /* ---------------------------------------------------------------------
    * Constants
    * ------------------------------------------------------------------- */
-  const NEG_KEYWORD_ENTITIES = new Set(["Negative Keyword", "Campaign Negative Keyword"]);
-  const NEG_PT_ENTITIES = new Set(["Negative Product Targeting", "Campaign Negative Product Targeting"]);
+  // Lowercased: Entity values are compared case-insensitively since bulk exports
+  // vary between title case ("Product Ad") and sentence case ("Product ad").
+  const NEG_KEYWORD_ENTITIES = new Set(["negative keyword", "campaign negative keyword"]);
+  const NEG_PT_ENTITIES = new Set(["negative product targeting", "campaign negative product targeting"]);
   const AUTO_DEFAULT_CLAUSES = new Set(["close-match", "loose-match", "substitutes", "complements"]);
   const ASIN_TOKEN_RE = /B0[A-Z0-9]{8}/gi;
 
@@ -177,23 +179,60 @@ window.PPCTools = (function () {
 
   /* ---------------------------------------------------------------------
    * Parsing & normalization
+   *
+   * Amazon bulk exports are inconsistently capitalized depending on
+   * marketplace/export path — some use "Keyword Text" / "Product Ad",
+   * others "Keyword text" / "Product ad". Every header key and Entity
+   * value is matched case-insensitively so this doesn't silently drop
+   * fields (a row missing its own keyword text due to a header-casing
+   * mismatch would otherwise vanish from every tool with no error).
    * ------------------------------------------------------------------- */
+  function lowerKeyRow(row) {
+    const out = {};
+    for (const k in row) {
+      if (Object.prototype.hasOwnProperty.call(row, k)) {
+        out[k.trim().toLowerCase()] = row[k];
+      }
+    }
+    return out;
+  }
+
+  function canonicalProduct(v) {
+    const raw = (v || "").toString().trim();
+    const norm = raw.toLowerCase();
+    if (norm === "sponsored products") return "Sponsored Products";
+    if (norm === "sponsored brands") return "Sponsored Brands";
+    if (norm === "sponsored display") return "Sponsored Display";
+    return raw;
+  }
+
+  function canonicalMatchType(v) {
+    if (!v) return null;
+    const raw = String(v).trim();
+    const norm = raw.toLowerCase();
+    if (norm === "exact") return "Exact";
+    if (norm === "phrase") return "Phrase";
+    if (norm === "broad") return "Broad";
+    return raw;
+  }
+
   function normalizeRow(sheetName, row) {
-    const entity = row["Entity"] ? String(row["Entity"]).trim() : "";
-    const product = row["Product"] ? String(row["Product"]).trim() : "";
+    const entity = row["entity"] ? String(row["entity"]).trim() : "";
+    const entityNorm = entity.toLowerCase();
+    const product = canonicalProduct(row["product"]);
 
     let kind = "other";
-    if (entity === "Keyword") kind = "keyword";
-    else if (NEG_KEYWORD_ENTITIES.has(entity)) kind = "negativeKeyword";
-    else if (entity === "Product Targeting") kind = "productTargeting";
-    else if (NEG_PT_ENTITIES.has(entity)) kind = "negativeProductTargeting";
+    if (entityNorm === "keyword") kind = "keyword";
+    else if (NEG_KEYWORD_ENTITIES.has(entityNorm)) kind = "negativeKeyword";
+    else if (entityNorm === "product targeting") kind = "productTargeting";
+    else if (NEG_PT_ENTITIES.has(entityNorm)) kind = "negativeProductTargeting";
 
-    const keywordText = pick(row, ["Keyword Text"]);
-    const matchType = pick(row, ["Match Type"]);
-    const targetingExpr = pick(row, ["Product Targeting Expression", "Targeting Expression"]);
+    const keywordText = pick(row, ["keyword text"]);
+    const matchType = canonicalMatchType(pick(row, ["match type"]));
+    const targetingExpr = pick(row, ["product targeting expression", "targeting expression"]);
     const resolvedExpr = pick(row, [
-      "Resolved Product Targeting Expression (Informational only)",
-      "Resolved Targeting Expression (Informational only)",
+      "resolved product targeting expression (informational only)",
+      "resolved targeting expression (informational only)",
     ]);
 
     let targetText = null;
@@ -209,8 +248,8 @@ window.PPCTools = (function () {
       effectiveMatchType = null;
     }
 
-    const campaignId = pick(row, ["Campaign ID"]);
-    const adGroupId = pick(row, ["Ad Group ID"]);
+    const campaignId = pick(row, ["campaign id"]);
+    const adGroupId = pick(row, ["ad group id"]);
     const normTargetText = normText(targetText);
 
     return {
@@ -219,31 +258,31 @@ window.PPCTools = (function () {
       entity,
       kind,
       campaignId,
-      campaignName: pick(row, ["Campaign Name", "Campaign Name (Informational only)"]),
+      campaignName: pick(row, ["campaign name", "campaign name (informational only)"]),
       adGroupId,
-      adGroupName: pick(row, ["Ad Group Name", "Ad Group Name (Informational only)"]),
+      adGroupName: pick(row, ["ad group name", "ad group name (informational only)"]),
       scopeId: adGroupId || campaignId,
-      targetId: pick(row, ["Keyword ID", "Product Targeting ID", "Targeting ID"]),
+      targetId: pick(row, ["keyword id", "product targeting id", "targeting id"]),
       targetText,
       targetLabel,
       matchType: effectiveMatchType,
       normTargetText,
       isAutoDefaultClause: kind === "productTargeting" && AUTO_DEFAULT_CLAUSES.has(normTargetText),
-      bid: pick(row, ["Bid"]),
-      state: pick(row, ["State"]),
-      campaignState: pick(row, ["Campaign State (Informational only)"]),
-      adGroupState: pick(row, ["Ad Group State (Informational only)"]),
-      impressions: toNum(row["Impressions"]),
-      clicks: toNum(row["Clicks"]),
-      ctr: toNum(row["Click-through Rate"]),
-      spend: toNum(row["Spend"]),
-      sales: toNum(row["Sales"]),
-      orders: toNum(row["Orders"]),
-      units: toNum(row["Units"]),
-      cvr: toNum(row["Conversion Rate"]),
-      acos: toNum(row["ACOS"]),
-      cpc: toNum(row["CPC"]),
-      roas: toNum(row["ROAS"]),
+      bid: pick(row, ["bid"]),
+      state: pick(row, ["state"]),
+      campaignState: pick(row, ["campaign state (informational only)"]),
+      adGroupState: pick(row, ["ad group state (informational only)"]),
+      impressions: toNum(row["impressions"]),
+      clicks: toNum(row["clicks"]),
+      ctr: toNum(row["click-through rate"]),
+      spend: toNum(row["spend"]),
+      sales: toNum(row["sales"]),
+      orders: toNum(row["orders"]),
+      units: toNum(row["units"]),
+      cvr: toNum(row["conversion rate"]),
+      acos: toNum(row["acos"]),
+      cpc: toNum(row["cpc"]),
+      roas: toNum(row["roas"]),
       raw: row,
     };
   }
@@ -255,12 +294,13 @@ window.PPCTools = (function () {
     wb.SheetNames.forEach((name) => {
       const ws = wb.Sheets[name];
       const json = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
-      const hasEntityCol = json.length > 0 && Object.prototype.hasOwnProperty.call(json[0], "Entity");
+      const rows = json.map(lowerKeyRow);
+      const hasEntityCol = rows.length > 0 && Object.prototype.hasOwnProperty.call(rows[0], "entity");
       if (!hasEntityCol) {
         sheetSummaries.push({ name, rows: json.length, skipped: true });
         return;
       }
-      const normalized = json.map((r) => normalizeRow(name, r));
+      const normalized = rows.map((r) => normalizeRow(name, r));
       allRows.push(...normalized);
       sheetSummaries.push({ name, rows: json.length, skipped: false });
     });
@@ -270,8 +310,8 @@ window.PPCTools = (function () {
 
   function detectCurrency(allRows) {
     const codes = allRows
-      .filter((r) => r.sheet === "Portfolios")
-      .map((r) => r.raw["Budget Currency Code"])
+      .filter((r) => r.sheet.toLowerCase() === "portfolios")
+      .map((r) => r.raw["budget currency code"])
       .filter(Boolean);
     if (!codes.length) return "";
     const counts = {};
@@ -284,7 +324,7 @@ window.PPCTools = (function () {
     const map = new Map();
     allRows.forEach((r) => {
       if (!r.scopeId) return;
-      const asins = extractAsins(pick(r.raw, ["ASIN (Informational only)", "Creative ASINs", "Landing Page ASINs"]));
+      const asins = extractAsins(pick(r.raw, ["asin (informational only)", "creative asins", "landing page asins"]));
       if (!asins.length) return;
       if (!map.has(r.scopeId)) map.set(r.scopeId, new Set());
       asins.forEach((a) => map.get(r.scopeId).add(a));
