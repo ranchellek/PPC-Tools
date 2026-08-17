@@ -125,7 +125,8 @@ window.PPCTools = (function () {
 
   function currencySymbolFor(code) {
     const map = { USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "CA$", AUD: "A$", MXN: "MX$", BRL: "R$", INR: "₹" };
-    return map[code] || (code ? code + " " : "");
+    const upper = (code || "").toString().trim().toUpperCase();
+    return map[upper] || (upper ? upper + " " : "");
   }
 
   function statePill(s) {
@@ -311,7 +312,7 @@ window.PPCTools = (function () {
   function detectCurrency(allRows) {
     const codes = allRows
       .filter((r) => r.sheet.toLowerCase() === "portfolios")
-      .map((r) => r.raw["budget currency code"])
+      .map((r) => (r.raw["budget currency code"] || "").toString().trim().toUpperCase())
       .filter(Boolean);
     if (!codes.length) return "";
     const counts = {};
